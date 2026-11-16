@@ -35,6 +35,31 @@ public partial class LoginForm : Form
         }
     }
 
+    // ---- Demo accounts: one click fills in the email and password and signs in ----
+    // (Remove these three buttons before the app is used for real.)
+
+    private void StudentDemoButton_Click(object sender, EventArgs e)
+    {
+        UseDemoAccount("student@auca.ac.rw", "Student@123");
+    }
+
+    private void LecturerDemoButton_Click(object sender, EventArgs e)
+    {
+        UseDemoAccount("lecturer@auca.ac.rw", "Lecturer@123");
+    }
+
+    private void AdminDemoButton_Click(object sender, EventArgs e)
+    {
+        UseDemoAccount("admin@auca.ac.rw", "Admin@123");
+    }
+
+    private void UseDemoAccount(string email, string password)
+    {
+        emailBox.Text = email;
+        passwordBox.Text = password;
+        SignInButton_Click(null, EventArgs.Empty); // the same as clicking "Sign in"
+    }
+
     private void RegisterButton_Click(object sender, EventArgs e)
     {
         RegisterForm registerForm = new RegisterForm(app, false);

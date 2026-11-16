@@ -83,8 +83,8 @@ dotnet publish src/LectroLend.Desktop -c Release -r win-x64 --self-contained -o 
 | Student | student@auca.ac.rw | Student@123 |
 | Lecturer | lecturer@auca.ac.rw | Lecturer@123 |
 
-The sign-in screen lists these accounts. Remove that label in `LoginForm.cs` and change the passwords before any real
-deployment.
+The sign-in screen has three demo buttons (Student, Lecturer, IT admin): one click fills in the email and password
+and signs in. Remove the buttons (`LoginForm`) and change the passwords before any real deployment.
 
 ## Project structure
 

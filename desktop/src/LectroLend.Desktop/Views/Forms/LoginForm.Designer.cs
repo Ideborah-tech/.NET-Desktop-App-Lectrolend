@@ -37,6 +37,9 @@ namespace LectroLend.Desktop.Views
             this.registerButton = new LectroLend.Desktop.Views.UI.RoundButton();
             this.demoCard = new LectroLend.Desktop.Views.UI.CardPanel();
             this.demoLabel = new System.Windows.Forms.Label();
+            this.studentDemoButton = new LectroLend.Desktop.Views.UI.RoundButton();
+            this.lecturerDemoButton = new LectroLend.Desktop.Views.UI.RoundButton();
+            this.adminDemoButton = new LectroLend.Desktop.Views.UI.RoundButton();
             ((System.ComponentModel.ISupportInitialize)(this.picture)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.logoPicture)).BeginInit();
             this.formPanel.SuspendLayout();
@@ -188,18 +191,57 @@ namespace LectroLend.Desktop.Views
             //
             this.demoCard.BackColor = System.Drawing.Color.FromArgb(248, 250, 252);
             this.demoCard.Controls.Add(this.demoLabel);
+            this.demoCard.Controls.Add(this.studentDemoButton);
+            this.demoCard.Controls.Add(this.lecturerDemoButton);
+            this.demoCard.Controls.Add(this.adminDemoButton);
             this.demoCard.Location = new System.Drawing.Point(95, 556);
             this.demoCard.Name = "demoCard";
-            this.demoCard.Padding = new System.Windows.Forms.Padding(14, 10, 14, 10);
             this.demoCard.Size = new System.Drawing.Size(390, 96);
             //
             // demoLabel
             //
-            this.demoLabel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.demoLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.demoLabel.AutoSize = true;
+            this.demoLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.demoLabel.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.demoLabel.Location = new System.Drawing.Point(14, 12);
             this.demoLabel.Name = "demoLabel";
-            this.demoLabel.Text = "Demo accounts\r\nStudent:  student@auca.ac.rw  /  Student@123\r\nLecturer:  lecturer@auca.ac.rw  /  Lecturer@123\r\nIT admin:  admin@auca.ac.rw  /  Admin@123";
+            this.demoLabel.Text = "Try a demo account (one click signs you in)";
+            //
+            // studentDemoButton
+            //
+            this.studentDemoButton.BackColor = System.Drawing.Color.White;
+            this.studentDemoButton.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.studentDemoButton.ForeColor = System.Drawing.Color.FromArgb(3, 52, 110);
+            this.studentDemoButton.Location = new System.Drawing.Point(14, 42);
+            this.studentDemoButton.Name = "studentDemoButton";
+            this.studentDemoButton.Size = new System.Drawing.Size(114, 38);
+            this.studentDemoButton.TabIndex = 4;
+            this.studentDemoButton.Text = "Student";
+            this.studentDemoButton.Click += new System.EventHandler(this.StudentDemoButton_Click);
+            //
+            // lecturerDemoButton
+            //
+            this.lecturerDemoButton.BackColor = System.Drawing.Color.White;
+            this.lecturerDemoButton.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.lecturerDemoButton.ForeColor = System.Drawing.Color.FromArgb(3, 52, 110);
+            this.lecturerDemoButton.Location = new System.Drawing.Point(138, 42);
+            this.lecturerDemoButton.Name = "lecturerDemoButton";
+            this.lecturerDemoButton.Size = new System.Drawing.Size(114, 38);
+            this.lecturerDemoButton.TabIndex = 5;
+            this.lecturerDemoButton.Text = "Lecturer";
+            this.lecturerDemoButton.Click += new System.EventHandler(this.LecturerDemoButton_Click);
+            //
+            // adminDemoButton
+            //
+            this.adminDemoButton.BackColor = System.Drawing.Color.White;
+            this.adminDemoButton.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.adminDemoButton.ForeColor = System.Drawing.Color.FromArgb(3, 52, 110);
+            this.adminDemoButton.Location = new System.Drawing.Point(262, 42);
+            this.adminDemoButton.Name = "adminDemoButton";
+            this.adminDemoButton.Size = new System.Drawing.Size(114, 38);
+            this.adminDemoButton.TabIndex = 6;
+            this.adminDemoButton.Text = "IT admin";
+            this.adminDemoButton.Click += new System.EventHandler(this.AdminDemoButton_Click);
             //
             // LoginForm
             //
@@ -242,5 +284,8 @@ namespace LectroLend.Desktop.Views
         private LectroLend.Desktop.Views.UI.RoundButton registerButton;
         private LectroLend.Desktop.Views.UI.CardPanel demoCard;
         private System.Windows.Forms.Label demoLabel;
+        private LectroLend.Desktop.Views.UI.RoundButton studentDemoButton;
+        private LectroLend.Desktop.Views.UI.RoundButton lecturerDemoButton;
+        private LectroLend.Desktop.Views.UI.RoundButton adminDemoButton;
     }
 }
