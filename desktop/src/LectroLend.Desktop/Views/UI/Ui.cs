@@ -150,6 +150,19 @@ public static class Ui
         return answer == DialogResult.Yes;
     }
 
+    // Loads a picture from the Assets folder, for example Ui.LoadPicture("auca-logo.png").
+    // Returns null (no picture) if the file is missing, so the app still opens.
+    public static Image LoadPicture(string fileName)
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "Assets", fileName);
+        if (!File.Exists(path))
+            return null;
+
+        // Read the file into memory first, so the file is not locked while the app is open.
+        byte[] bytes = File.ReadAllBytes(path);
+        return Image.FromStream(new MemoryStream(bytes));
+    }
+
     // Writes a date and time like "Mon 16 Nov, 14:30".
     public static string FormatTime(DateTime time)
     {

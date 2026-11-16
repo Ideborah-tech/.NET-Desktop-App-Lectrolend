@@ -22,6 +22,7 @@ public partial class MainForm : Form
 
         this.app = app;
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); // the app icon
+        logoPicture.Image = Ui.LoadPicture("auca-logo.png");            // the university logo in the top bar
 
         // The menu depends on who signed in, so we add its buttons here in code.
         if (Session.IsAdmin())

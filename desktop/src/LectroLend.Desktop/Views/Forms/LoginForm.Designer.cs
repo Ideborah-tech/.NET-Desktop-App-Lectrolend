@@ -23,7 +23,9 @@ namespace LectroLend.Desktop.Views
         {
             this.picture = new System.Windows.Forms.PictureBox();
             this.formPanel = new System.Windows.Forms.Panel();
+            this.logoPicture = new System.Windows.Forms.PictureBox();
             this.brandLabel = new System.Windows.Forms.Label();
+            this.universityLabel = new System.Windows.Forms.Label();
             this.titleLabel = new System.Windows.Forms.Label();
             this.subtitleLabel = new System.Windows.Forms.Label();
             this.emailLabel = new System.Windows.Forms.Label();
@@ -36,13 +38,14 @@ namespace LectroLend.Desktop.Views
             this.demoCard = new LectroLend.Desktop.Views.UI.CardPanel();
             this.demoLabel = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.picture)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.logoPicture)).BeginInit();
             this.formPanel.SuspendLayout();
             this.demoCard.SuspendLayout();
             this.SuspendLayout();
             //
-            // picture  (the picture itself is loaded from Assets\signin.png when the app runs)
+            // picture  (the welcome picture; it is loaded from Assets\welcome.jpg when the app runs)
             //
-            this.picture.BackColor = System.Drawing.Color.FromArgb(3, 52, 110);
+            this.picture.BackColor = System.Drawing.Color.White;
             this.picture.Dock = System.Windows.Forms.DockStyle.Left;
             this.picture.Location = new System.Drawing.Point(0, 0);
             this.picture.Name = "picture";
@@ -52,7 +55,9 @@ namespace LectroLend.Desktop.Views
             //
             // formPanel  (the white right side)
             //
+            this.formPanel.Controls.Add(this.logoPicture);
             this.formPanel.Controls.Add(this.brandLabel);
+            this.formPanel.Controls.Add(this.universityLabel);
             this.formPanel.Controls.Add(this.titleLabel);
             this.formPanel.Controls.Add(this.subtitleLabel);
             this.formPanel.Controls.Add(this.emailLabel);
@@ -73,9 +78,26 @@ namespace LectroLend.Desktop.Views
             this.brandLabel.AutoSize = true;
             this.brandLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.brandLabel.ForeColor = System.Drawing.Color.FromArgb(44, 116, 179);
-            this.brandLabel.Location = new System.Drawing.Point(95, 60);
+            this.brandLabel.Location = new System.Drawing.Point(158, 28);
             this.brandLabel.Name = "brandLabel";
-            this.brandLabel.Text = "LECTROLEND";
+            this.brandLabel.Text = "AUCA  ·  LECTROLEND";
+            //
+            // universityLabel
+            //
+            this.universityLabel.AutoSize = true;
+            this.universityLabel.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.universityLabel.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
+            this.universityLabel.Location = new System.Drawing.Point(158, 48);
+            this.universityLabel.Name = "universityLabel";
+            this.universityLabel.Text = "Adventist University of Central Africa";
+            //
+            // logoPicture  (the AUCA logo; it is loaded from Assets\auca-logo.png when the app runs)
+            //
+            this.logoPicture.Location = new System.Drawing.Point(95, 20);
+            this.logoPicture.Name = "logoPicture";
+            this.logoPicture.Size = new System.Drawing.Size(54, 54);
+            this.logoPicture.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.logoPicture.TabStop = false;
             //
             // titleLabel
             //
@@ -195,6 +217,7 @@ namespace LectroLend.Desktop.Views
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "LectroLend - Sign in";
             ((System.ComponentModel.ISupportInitialize)(this.picture)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.logoPicture)).EndInit();
             this.formPanel.ResumeLayout(false);
             this.formPanel.PerformLayout();
             this.demoCard.ResumeLayout(false);
@@ -205,7 +228,9 @@ namespace LectroLend.Desktop.Views
 
         private System.Windows.Forms.PictureBox picture;
         private System.Windows.Forms.Panel formPanel;
+        private System.Windows.Forms.PictureBox logoPicture;
         private System.Windows.Forms.Label brandLabel;
+        private System.Windows.Forms.Label universityLabel;
         private System.Windows.Forms.Label titleLabel;
         private System.Windows.Forms.Label subtitleLabel;
         private System.Windows.Forms.Label emailLabel;

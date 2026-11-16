@@ -17,10 +17,9 @@ public partial class LoginForm : Form
         this.app = app;
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); // the app icon
 
-        // Load the picture from the file Assets\signin.png (swap the file to change the picture).
-        string picturePath = Path.Combine(AppContext.BaseDirectory, "Assets", "signin.png");
-        if (File.Exists(picturePath))
-            picture.Image = Image.FromFile(picturePath);
+        // Load the pictures from the Assets folder (replace a file to change its picture).
+        picture.Image = Ui.LoadPicture("welcome.jpg");       // the welcome picture on the left
+        logoPicture.Image = Ui.LoadPicture("auca-logo.png"); // the university logo
     }
 
     private void SignInButton_Click(object sender, EventArgs e)

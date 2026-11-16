@@ -7,8 +7,8 @@ can share one `lectrolend` database (accounts made in one work in the other, bec
 The code is written for beginners: plain classes and `if / else`, one class per window, named click handlers such as
 `SaveButton_Click`, `try / catch` around every database call, and short comments in simple English. Nullable
 reference types are turned off, so there are no `?` and `!` marks on normal types. Rule errors are thrown as
-`AppException` with a message that the window shows to the user. The only picture is on the sign-in
-screen (`Assets/signin.png`); replace that file with any picture of your own and keep the file name.
+`AppException` with a message that the window shows to the user. The sign-in page shows the AUCA logo (`Assets/auca-logo.png`, also in the main window's top bar) and a welcome
+picture (`Assets/welcome.jpg`). To change a picture, replace the file and keep the same file name.
 
 ## MVC architecture
 
@@ -63,7 +63,7 @@ onto a form. For an `InputBox`, set `Hint` and `IsPassword` in the Properties wi
 
 A few things are made in code while the app runs, because they depend on the data or on who signed in, so Design view
 shows only their empty area: the equipment cards (Borrow page), the rows of every table, and the menu buttons
-(main window). The sign-in picture is also loaded when the app runs, from `Assets/signin.png`.
+(main window). The pictures are also loaded when the app runs, from `Assets/welcome.jpg` and `Assets/auca-logo.png`.
 
 The first time, a **Connect to PostgreSQL** window asks for your PostgreSQL password. The app then creates the
 `lectrolend` database (if missing), builds the tables and loads the demo data. The connection is saved for your Windows
@@ -110,7 +110,7 @@ desktop/
 │       │   ├── Pages/                 screens in the main window (UserControls): BorrowPage, MyReservationsPage,
 │       │   │                          ProfilePage, DashboardPage, ReservationsPage, EquipmentPage, RoomsPage, PeoplePage
 │       │   └── UI/                    Ui.cs (colours, fonts, StyleGrid, messages); RoundButton, CardPanel, InputBox
-│       └── Assets/                    signin.png (sign-in picture), app.ico
+│       └── Assets/                    auca-logo.png (university logo), welcome.jpg (sign-in picture), app.ico
 └── tests/LectroLend.Core.Tests/       xUnit: state machine, booking rules, EF mapping vs the SQL schema
 ```
 

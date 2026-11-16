@@ -23,12 +23,14 @@ namespace LectroLend.Desktop.Views
         {
             this.components = new System.ComponentModel.Container();
             this.topBar = new System.Windows.Forms.Panel();
+            this.logoPicture = new System.Windows.Forms.PictureBox();
             this.appNameLabel = new System.Windows.Forms.Label();
             this.userLabel = new System.Windows.Forms.Label();
             this.signOutButton = new LectroLend.Desktop.Views.UI.RoundButton();
             this.menuPanel = new System.Windows.Forms.Panel();
             this.pagePanel = new System.Windows.Forms.Panel();
             this.timer = new System.Windows.Forms.Timer(this.components);
+            ((System.ComponentModel.ISupportInitialize)(this.logoPicture)).BeginInit();
             this.topBar.SuspendLayout();
             this.SuspendLayout();
             //
@@ -38,11 +40,20 @@ namespace LectroLend.Desktop.Views
             this.topBar.Controls.Add(this.appNameLabel);
             this.topBar.Controls.Add(this.userLabel);
             this.topBar.Controls.Add(this.signOutButton);
+            this.topBar.Controls.Add(this.logoPicture);
             this.topBar.Dock = System.Windows.Forms.DockStyle.Top;
             this.topBar.Location = new System.Drawing.Point(0, 0);
             this.topBar.Name = "topBar";
             this.topBar.Padding = new System.Windows.Forms.Padding(20, 12, 20, 12);
             this.topBar.Size = new System.Drawing.Size(1280, 60);
+            //
+            // logoPicture  (the AUCA logo on the far left; loaded from Assets\auca-logo.png when the app runs)
+            //
+            this.logoPicture.Dock = System.Windows.Forms.DockStyle.Left;
+            this.logoPicture.Name = "logoPicture";
+            this.logoPicture.Size = new System.Drawing.Size(36, 36);
+            this.logoPicture.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.logoPicture.TabStop = false;
             //
             // appNameLabel
             //
@@ -51,6 +62,7 @@ namespace LectroLend.Desktop.Views
             this.appNameLabel.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
             this.appNameLabel.ForeColor = System.Drawing.Color.White;
             this.appNameLabel.Name = "appNameLabel";
+            this.appNameLabel.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
             this.appNameLabel.Text = "LectroLend";
             //
             // userLabel  (the name of the person who is signed in, set in MainForm.cs)
@@ -111,6 +123,7 @@ namespace LectroLend.Desktop.Views
             this.Text = "LectroLend";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.MainForm_Load);
+            ((System.ComponentModel.ISupportInitialize)(this.logoPicture)).EndInit();
             this.topBar.ResumeLayout(false);
             this.topBar.PerformLayout();
             this.ResumeLayout(false);
@@ -119,6 +132,7 @@ namespace LectroLend.Desktop.Views
         #endregion
 
         private System.Windows.Forms.Panel topBar;
+        private System.Windows.Forms.PictureBox logoPicture;
         private System.Windows.Forms.Label appNameLabel;
         private System.Windows.Forms.Label userLabel;
         private LectroLend.Desktop.Views.UI.RoundButton signOutButton;

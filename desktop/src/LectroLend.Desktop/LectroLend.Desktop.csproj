@@ -17,8 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Plain pictures (no 3D): swap any of these PNGs for a photo of your own, keeping the file name. -->
-    <None Update="Assets\*.png;Assets\*.ico" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Pictures: auca-logo.png (the university logo) and welcome.jpg (the sign-in picture).
+         To change a picture, replace the file and keep the same file name. -->
+    <None Update="Assets\*.png;Assets\*.jpg;Assets\*.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
