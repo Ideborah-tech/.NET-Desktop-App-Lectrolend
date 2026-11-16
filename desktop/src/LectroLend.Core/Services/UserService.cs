@@ -1,0 +1,212 @@
+using LectroLend.Core.Data;
+using LectroLend.Core.Models;
+
+namespace LectroLend.Core.Services;
+
+// Signing in and creating accounts.
+public class AuthService
+{
+    private DbSettings settings;
+    private UserService userService;
+
+    public AuthService(DbSettings settings, UserService userService)
+    {
+        this.settings = settings;
+        this.userService = userService;
+    }
+
+    // Returns the user if the email and password are correct.
+    public User Login(string email, string password)
+    {
+        if (email == null) email = "";
+        if (password == null) password = "";
+        string typedEmail = email.Trim().ToLower();
+
+        using (LectroLendDbContext db = new LectroLendDbContext(settings))
+        {
+            User user = db.Users.FirstOrDefault(u => u.Email.ToLower() == typedEmail);
+
+            // We give the same message for a wrong email and a wrong password (safer).
+            if (user == null || !Passwords.Matches(password, user.PasswordHash))
+                throw new AppException("Incorrect email or password.");
+
+            if (!user.Active)
+                throw new AppException("This account has been deactivated. Please contact the IT office.");
+
+            return user;
+        }
+    }
+
+    // Anyone can create a student or lecturer account. Only an admin can create admin accounts.
+    public User Register(RegisterRequest request)
+    {
+        return userService.Create(request, false);
+    }
+}
+
+// Managing accounts and profiles.
+public class UserService
+{
+    private DbSettings settings;
+
+    public UserService(DbSettings settings)
+    {
+        this.settings = settings;
+    }
+
+    // Creates a new account. Set allowAdmin to true only when an admin is creating the account.
+    public User Create(RegisterRequest request, bool allowAdmin)
+    {
+        // 1. Check what was typed.
+        Check.Required(request.FullName, "Full name", 100);
+        Check.Email(request.Email);
+        Check.Password(request.Password);
+        Check.MaxLength(request.Phone, "Phone", 20);
+        if (request.Role == Role.ADMIN && !allowAdmin)
+            throw new AppException("Only an administrator can create administrator accounts.");
+
+        string email = request.Email.Trim().ToLower();
+
+        using (LectroLendDbContext db = new LectroLendDbContext(settings))
+        {
+            // 2. The email must not be used already.
+            if (db.Users.Any(u => u.Email.ToLower() == email))
+                throw new AppException("An account with this email already exists.");
+
+            // 3. Make the right kind of user.
+            User user;
+            if (request.Role == Role.STUDENT)
+            {
+                Check.Required(request.RegistrationNo, "Registration number", 20);
+                string number = request.RegistrationNo.Trim();
+                if (db.Students.Any(s => s.RegistrationNo == number))
+                    throw new AppException("This registration number is already used.");
+
+                Student student = new Student();
+                student.RegistrationNo = number;
+                student.Faculty = Check.Clean(request.Faculty);
+                student.Program = Check.Clean(request.Program);
+                user = student;
+            }
+            else if (request.Role == Role.LECTURER)
+            {
+                Check.Required(request.StaffNo, "Staff number", 20);
+                string number = request.StaffNo.Trim();
+                if (db.Lecturers.Any(l => l.StaffNo == number))
+                    throw new AppException("This staff number is already used.");
+
+                Lecturer lecturer = new Lecturer();
+                lecturer.StaffNo = number;
+                lecturer.Department = Check.Clean(request.Department);
+                user = lecturer;
+            }
+            else
+            {
+                Check.Required(request.StaffNo, "Staff number", 20);
+                string number = request.StaffNo.Trim();
+                if (db.Admins.Any(a => a.StaffNo == number))
+                    throw new AppException("This staff number is already used.");
+
+                Admin admin = new Admin();
+                admin.StaffNo = number;
+                user = admin;
+            }
+
+            // 4. Fill in the common details and save.
+            user.FullName = request.FullName.Trim();
+            user.Email = email;
+            user.Phone = Check.Clean(request.Phone);
+            user.PasswordHash = Passwords.Hash(request.Password);
+
+            db.Users.Add(user);
+            db.SaveChanges();
+            return user;
+        }
+    }
+
+    // All users, sorted by role and then by name.
+    public List<User> List()
+    {
+        using (LectroLendDbContext db = new LectroLendDbContext(settings))
+        {
+            return db.Users.OrderBy(u => u.Role).ThenBy(u => u.FullName).ToList();
+        }
+    }
+
+    public User Get(long userId)
+    {
+        using (LectroLendDbContext db = new LectroLendDbContext(settings))
+        {
+            return FindUser(db, userId);
+        }
+    }
+
+    // Turns an account on (active = true) or off (active = false).
+    public void SetActive(long userId, bool active, long adminId)
+    {
+        if (userId == adminId && !active)
+            throw new AppException("You cannot deactivate your own account.");
+
+        using (LectroLendDbContext db = new LectroLendDbContext(settings))
+        {
+            User user = FindUser(db, userId);
+            user.Active = active;
+            db.SaveChanges();
+        }
+    }
+
+    // Saves the details a user may change about themselves.
+    public User UpdateProfile(long userId, string fullName, string phone, string faculty, string program, string department)
+    {
+        Check.Required(fullName, "Full name", 100);
+        Check.MaxLength(phone, "Phone", 20);
+
+        using (LectroLendDbContext db = new LectroLendDbContext(settings))
+        {
+            User user = FindUser(db, userId);
+            user.FullName = fullName.Trim();
+            user.Phone = Check.Clean(phone);
+
+            if (user is Student)
+            {
+                Student student = (Student)user;
+                student.Faculty = Check.Clean(faculty);
+                student.Program = Check.Clean(program);
+            }
+            if (user is Lecturer)
+            {
+                Lecturer lecturer = (Lecturer)user;
+                lecturer.Department = Check.Clean(department);
+            }
+
+            db.SaveChanges();
+            return user;
+        }
+    }
+
+    public void ChangePassword(long userId, string currentPassword, string newPassword)
+    {
+        Check.Password(newPassword);
+
+        using (LectroLendDbContext db = new LectroLendDbContext(settings))
+        {
+            User user = FindUser(db, userId);
+
+            if (!Passwords.Matches(currentPassword, user.PasswordHash))
+                throw new AppException("Your current password is incorrect.");
+            if (Passwords.Matches(newPassword, user.PasswordHash))
+                throw new AppException("Please choose a new password that is different from the current one.");
+
+            user.PasswordHash = Passwords.Hash(newPassword);
+            db.SaveChanges();
+        }
+    }
+
+    private static User FindUser(LectroLendDbContext db, long userId)
+    {
+        User user = db.Users.FirstOrDefault(u => u.UserId == userId);
+        if (user == null)
+            throw new AppException("User not found.");
+        return user;
+    }
+}

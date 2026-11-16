@@ -1,0 +1,59 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Backend: mvn spring-boot:run",
+      "type": "shell",
+      "command": "mvn spring-boot:run",
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "JAVA_HOME": "C:\Program Files\Eclipse Adoptium\jdk-21.0.5.11-hotspot",
+          "DB_HOST": "localhost",
+          "DB_PORT": "5432",
+          "DB_NAME": "lectrolend",
+          "DB_USER": "postgres",
+          "DB_PASSWORD": "${input:dbPassword}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated", "group": "lectrolend" }
+    },
+    {
+      "label": "Backend: mvn test",
+      "type": "shell",
+      "command": "mvn test",
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": { "JAVA_HOME": "C:\Program Files\Eclipse Adoptium\jdk-21.0.5.11-hotspot" }
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Frontend: npm run dev",
+      "type": "shell",
+      "command": "npm install; npm run dev",
+      "options": { "cwd": "${workspaceFolder}/frontend" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "panel": "dedicated", "group": "lectrolend" }
+    },
+    {
+      "label": "Run LectroLend (Maven API + Web)",
+      "dependsOn": ["Backend: mvn spring-boot:run", "Frontend: npm run dev"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "dbPassword",
+      "type": "promptString",
+      "description": "PostgreSQL password for user 'postgres'",
+      "password": true
+    }
+  ]
+}

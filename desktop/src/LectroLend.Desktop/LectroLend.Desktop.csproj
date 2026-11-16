@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>LectroLend.Desktop</RootNamespace>
+    <AssemblyName>LectroLend</AssemblyName>
+    <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LectroLend.Core\LectroLend.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Plain pictures (no 3D): swap any of these PNGs for a photo of your own, keeping the file name. -->
+    <None Update="Assets\*.png;Assets\*.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Tells Visual Studio which files are windows (Form) and pages (UserControl),
+         so double-clicking them opens Design view. -->
+    <Compile Update="Views\Forms\ConnectionForm.cs" SubType="Form" />
+    <Compile Update="Views\Forms\LoginForm.cs" SubType="Form" />
+    <Compile Update="Views\Forms\RegisterForm.cs" SubType="Form" />
+    <Compile Update="Views\Forms\MainForm.cs" SubType="Form" />
+    <Compile Update="Views\Forms\ReserveForm.cs" SubType="Form" />
+    <Compile Update="Views\Forms\ReturnForm.cs" SubType="Form" />
+    <Compile Update="Views\Forms\EquipmentForm.cs" SubType="Form" />
+    <Compile Update="Views\Forms\RoomForm.cs" SubType="Form" />
+    <Compile Update="Views\Pages\BorrowPage.cs" SubType="UserControl" />
+    <Compile Update="Views\Pages\MyReservationsPage.cs" SubType="UserControl" />
+    <Compile Update="Views\Pages\ProfilePage.cs" SubType="UserControl" />
+    <Compile Update="Views\Pages\DashboardPage.cs" SubType="UserControl" />
+    <Compile Update="Views\Pages\ReservationsPage.cs" SubType="UserControl" />
+    <Compile Update="Views\Pages\EquipmentPage.cs" SubType="UserControl" />
+    <Compile Update="Views\Pages\RoomsPage.cs" SubType="UserControl" />
+    <Compile Update="Views\Pages\PeoplePage.cs" SubType="UserControl" />
+    <Compile Update="Views\UI\InputBox.cs" SubType="UserControl" />
+    <Compile Update="Views\UI\RoundButton.cs" SubType="Component" />
+    <Compile Update="Views\UI\CardPanel.cs" SubType="Component" />
+  </ItemGroup>
+
+</Project>
