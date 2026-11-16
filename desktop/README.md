@@ -10,6 +10,27 @@ reference types are turned off, so there are no `?` and `!` marks on normal type
 `AppException` with a message that the window shows to the user. The only picture is on the sign-in
 screen (`Assets/signin.png`); replace that file with any picture of your own and keep the file name.
 
+## MVC architecture
+
+The app follows **Model - View - Controller**:
+
+```
+ VIEW (windows)        --->  CONTROLLER              --->  MODEL
+ Views/Forms, Pages          Controllers/                  LectroLend.Core (Models, Services, Data)
+ shows data, reacts          decides what to do,           the classes, the rules
+ to clicks                   calls the model               and the PostgreSQL database
+```
+
+| Part | Folder | What it does |
+|---|---|---|
+| **Model** | `src/LectroLend.Core` | `Models/` (User, Student, Lecturer, Admin, Equipment, Room, Reservation, ReturnRecord), `Services/` (the business rules), `Data/` (EF Core + PostgreSQL). Knows nothing about windows. |
+| **View** | `src/LectroLend.Desktop/Views` | `Forms/` (windows), `Pages/` (screens inside the main window), `UI/` (colours and custom controls). Views only call controllers. |
+| **Controller** | `src/LectroLend.Desktop/Controllers` | `AccountController`, `EquipmentController`, `RoomController`, `ReservationController`, plus `Session` (who is signed in). |
+
+Example: clicking **Reserve** runs `ReserveButton_Click` in the view, which calls
+`app.Reservations.Reserve(item, start, end, room)` in the controller, which calls `ReservationService.Create(...)`
+in the model, which checks the rules and saves the booking in the database.
+
 ## Run it
 
 You need the **.NET 8 SDK** (or newer) and **PostgreSQL** running locally.
@@ -33,7 +54,7 @@ Every window and page has the normal Visual Studio files:
 
 1. Open `desktop/LectroLend.Desktop.sln` in Visual Studio and **build once** (Ctrl+Shift+B). The designer needs the
    build to show the custom controls (`RoundButton`, `CardPanel`, `InputBox`).
-2. In Solution Explorer, **double-click** a window, for example `Forms/LoginForm.cs`. Design view opens.
+2. In Solution Explorer, **double-click** a window, for example `Views/Forms/LoginForm.cs`. Design view opens.
 3. Click a control, then change it in the **Properties** window (F4), or drag it with the mouse.
 4. Double-click a button to jump to its click method in the `.cs` file.
 
@@ -73,22 +94,22 @@ desktop/
 ├── src/
 │   ├── LectroLend.Core/               class library: model + data + business rules (no UI)
 │   │   ├── Models/                    User (abstract) -> Student / Lecturer (IBorrower), Admin; Equipment, Room,
-│   │   │                              Reservation (state machine), ReturnRecord; enums
+│   │   │                              Reservation (state machine), ReturnRecord; enums; AppException
 │   │   ├── Data/                      LectroLendDbContext (EF Core; tables and columns set with [Table] / [Column]),
 │   │   │                              Schema.sql (same as the Flyway migration), DatabaseInitializer (create + seed),
 │   │   │                              DbSettings, BCrypt Passwords
 │   │   └── Services/                  AuthService, UserService, EquipmentService, RoomService,
-│   │                                  ReservationService, ReportService, Check (input checks), AppException
-│   └── LectroLend.Desktop/            WinForms app (the view)
+│   │                                  ReservationService, ReportService, Check (input checks)
+│   └── LectroLend.Desktop/            WinForms app (Views + Controllers)
 │       ├── Program.cs                 connect -> sign in -> main window (loops back after Sign out)
-│       ├── AppServices.cs             composition root + signed-in user
-│       ├── Forms/                     windows (each = .cs + .Designer.cs + .resx): ConnectionForm, LoginForm,
-│       │                              RegisterForm, MainForm, ReserveForm, ReturnForm, EquipmentForm, RoomForm
-│       ├── Pages/                     what the main window shows (UserControls, each = .cs + .Designer.cs + .resx):
-│       │                              BorrowPage, MyReservationsPage, ProfilePage, DashboardPage,
-│       │                              ReservationsPage, EquipmentPage, RoomsPage, PeoplePage
-│       ├── UI/                        Ui.cs (colours, fonts, StyleGrid, messages); RoundButton, CardPanel,
-│       │                              InputBox (custom controls, also in the Toolbox)
+│       ├── Controllers/               AppControllers, Session, AccountController, EquipmentController,
+│       │                              RoomController, ReservationController
+│       ├── Views/
+│       │   ├── Forms/                 windows (each = .cs + .Designer.cs + .resx): ConnectionForm, LoginForm,
+│       │   │                          RegisterForm, MainForm, ReserveForm, ReturnForm, EquipmentForm, RoomForm
+│       │   ├── Pages/                 screens in the main window (UserControls): BorrowPage, MyReservationsPage,
+│       │   │                          ProfilePage, DashboardPage, ReservationsPage, EquipmentPage, RoomsPage, PeoplePage
+│       │   └── UI/                    Ui.cs (colours, fonts, StyleGrid, messages); RoundButton, CardPanel, InputBox
 │       └── Assets/                    signin.png (sign-in picture), app.ico
 └── tests/LectroLend.Core.Tests/       xUnit: state machine, booking rules, EF mapping vs the SQL schema
 ```
@@ -99,7 +120,7 @@ desktop/
 |---|---|
 | ERD | `Data/Schema.sql` + `LectroLendDbContext` (TPT: `users` + `student` / `lecturer` / `admin`) |
 | Class diagram | `Models/`: abstract `User`; `Student` and `Lecturer` implement `IBorrower` (the Borrower generalisation, limits 3 and 5); `Admin` |
-| MVC layers | Forms/Pages (view) -> Services (rules) -> EF Core DbContext (repository) -> PostgreSQL |
+| MVC layers | Views (Forms/Pages) -> Controllers -> Model (Services -> EF Core DbContext -> PostgreSQL) |
 | Sequence diagram (make reservation) | `ReservationService.Create`: validate window, check limit, `SELECT ... FOR UPDATE` on each item, `IsReservable`, overlap check, save as BOOKED, all in one transaction |
 | State diagram | `Reservation.Cancel / MarkIssued / MarkReturned / Expire / MarkOverdue`; `MainForm` runs `RunHousekeeping` every minute (expire after 30 min, flag OVERDUE) |
 | Activity diagram | Borrower reserves; admin **Hand over** (item -> IN_USE); admin **Check in** (damaged -> UNDER_MAINTENANCE, else AVAILABLE; late returns flagged) |

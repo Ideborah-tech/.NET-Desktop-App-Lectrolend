@@ -7,3 +7,6 @@ desktop/**/bin/
 desktop/**/obj/
 desktop/publish/
 .vs/
+
+# Visual Studio user files
+*.user
