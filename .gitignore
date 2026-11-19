@@ -1,12 +1,12 @@
-backend/target/
-frontend/node_modules/
-frontend/dist/
+# Build output (created by "dotnet build" / Visual Studio)
+bin/
+obj/
+publish/
+
+# Visual Studio settings for your own computer
+.vs/
+*.user
+
+# Other
 *.log
 .env
-desktop/**/bin/
-desktop/**/obj/
-desktop/publish/
-.vs/
-
-# Visual Studio user files
-*.user
