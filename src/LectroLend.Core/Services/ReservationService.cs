@@ -1,10 +1,11 @@
 using LectroLend.Core.Data;
 using LectroLend.Core.Models;
-using Microsoft.EntityFrameworkCore;
+using LectroLend.Core.Repositories;
 
 namespace LectroLend.Core.Services;
 
-// The main rules of the app: booking, cancelling, handing over and checking in equipment.
+// SERVICE: the main rules of the app: booking, cancelling, handing over and checking in equipment.
+// It gets and saves data through the repositories.
 public class ReservationService
 {
     // The IT office can hand an item over from 30 minutes before the start time...
@@ -28,30 +29,31 @@ public class ReservationService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            return LoadWithDetails(db)
-                .Where(r => r.UserId == userId)
-                .OrderByDescending(r => r.StartTime)
-                .ToList();
+            ReservationRepository reservations = new ReservationRepository(db);
+            return reservations.GetForUserWithDetails(userId);
         }
     }
 
     // All bookings, newest first. Give a status to see only those bookings, or null to see all.
     public List<Reservation> All(ReservationStatus? status = null)
     {
+        List<Reservation> all;
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            List<Reservation> all = LoadWithDetails(db).OrderByDescending(r => r.StartTime).ToList();
-            if (status == null)
-                return all;
-
-            List<Reservation> result = new List<Reservation>();
-            foreach (Reservation r in all)
-            {
-                if (r.Status == status)
-                    result.Add(r);
-            }
-            return result;
+            ReservationRepository reservations = new ReservationRepository(db);
+            all = reservations.GetAllWithDetails();
         }
+
+        if (status == null)
+            return all;
+
+        List<Reservation> result = new List<Reservation>();
+        foreach (Reservation r in all)
+        {
+            if (r.Status == status)
+                result.Add(r);
+        }
+        return result;
     }
 
     // How many bookings a user holds right now (booked, picked up or late).
@@ -59,7 +61,8 @@ public class ReservationService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            return CountActive(db, userId);
+            ReservationRepository reservations = new ReservationRepository(db);
+            return reservations.CountActiveForUser(userId);
         }
     }
 
@@ -71,8 +74,12 @@ public class ReservationService
         // A transaction means "all or nothing": if anything fails, nothing is saved.
         using (var transaction = db.Database.BeginTransaction())
         {
+            UserRepository users = new UserRepository(db);
+            EquipmentRepository equipment = new EquipmentRepository(db);
+            ReservationRepository reservations = new ReservationRepository(db);
+
             // 1. Only students and lecturers can book.
-            User user = db.Users.FirstOrDefault(u => u.UserId == userId);
+            User user = users.FindById(userId);
             if (!(user is IBorrower))
                 throw new AppException("Only students and lecturers can book equipment.");
             IBorrower borrower = (IBorrower)user;
@@ -81,19 +88,20 @@ public class ReservationService
             CheckTimes(start, end, DateTime.Now);
 
             // 3. The user must not be over their limit.
-            int active = CountActive(db, userId);
+            int active = reservations.CountActiveForUser(userId);
             if (active >= borrower.MaxActiveReservations)
                 throw new AppException("You already have " + active + " active bookings. Your limit is "
                                        + borrower.MaxActiveReservations + ".");
 
             // 4. Lock the item so nobody else can book it at the same moment.
-            Equipment item = EquipmentService.LoadAndLock(db, equipmentId);
+            Equipment item = equipment.FindByIdAndLock(equipmentId);
+            if (item == null)
+                throw new AppException("Equipment not found.");
             if (!item.IsReservable())
                 throw new AppException(item.Name + " is " + Labels.InSentence(item.Status) + " and cannot be booked.");
 
             // 5. The item must not be booked for any part of that time.
-            List<Reservation> bookings = db.Reservations.Where(r => r.EquipmentId == equipmentId).ToList();
-            if (HasOverlap(bookings, start, end))
+            if (HasOverlap(reservations.GetForEquipment(equipmentId), start, end))
                 throw new AppException(item.Name + " is already booked for part of that time. Please choose another time.");
 
             // 6. Save the new booking.
@@ -106,8 +114,8 @@ public class ReservationService
             reservation.Status = ReservationStatus.BOOKED;
             reservation.CreatedAt = DateTime.Now;
 
-            db.Reservations.Add(reservation);
-            db.SaveChanges();
+            reservations.Add(reservation);
+            reservations.Save();
             transaction.Commit();
             return reservation;
         }
@@ -120,12 +128,13 @@ public class ReservationService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            Reservation reservation = FindReservation(db, reservationId);
+            ReservationRepository reservations = new ReservationRepository(db);
+            Reservation reservation = FindReservation(reservations, reservationId);
             if (!isAdmin && reservation.UserId != userId)
                 throw new AppException("You can only cancel your own bookings.");
 
             reservation.Cancel();
-            db.SaveChanges();
+            reservations.Save();
         }
     }
 
@@ -136,7 +145,10 @@ public class ReservationService
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         using (var transaction = db.Database.BeginTransaction())
         {
-            Reservation reservation = FindReservation(db, reservationId);
+            ReservationRepository reservations = new ReservationRepository(db);
+            EquipmentRepository equipment = new EquipmentRepository(db);
+
+            Reservation reservation = FindReservation(reservations, reservationId);
             DateTime now = DateTime.Now;
 
             if (reservation.Status != ReservationStatus.BOOKED)
@@ -147,14 +159,14 @@ public class ReservationService
             if (now > reservation.StartTime.AddMinutes(PickupWindowMinutes))
                 throw new AppException("Too late. The pick-up time has passed, so this booking will expire.");
 
-            Equipment item = EquipmentService.LoadAndLock(db, reservation.EquipmentId);
+            Equipment item = equipment.FindByIdAndLock(reservation.EquipmentId);
             if (!item.IsAvailable())
                 throw new AppException(item.Name + " is " + Labels.InSentence(item.Status) + " and cannot be handed over now.");
 
             reservation.MarkIssued(now);
             item.Status = EquipmentStatus.IN_USE;
 
-            db.SaveChanges();
+            reservations.Save();
             transaction.Commit();
         }
     }
@@ -166,12 +178,15 @@ public class ReservationService
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         using (var transaction = db.Database.BeginTransaction())
         {
-            Reservation reservation = FindReservation(db, reservationId);
+            ReservationRepository reservations = new ReservationRepository(db);
+            EquipmentRepository equipment = new EquipmentRepository(db);
+
+            Reservation reservation = FindReservation(reservations, reservationId);
             DateTime now = DateTime.Now;
 
             if (reservation.Status != ReservationStatus.ISSUED && reservation.Status != ReservationStatus.OVERDUE)
                 throw new AppException("Only an item that was handed over can be checked in.");
-            if (db.ReturnRecords.Any(rr => rr.ReservationId == reservationId))
+            if (reservations.ReturnRecordExists(reservationId))
                 throw new AppException("This item has already been checked in.");
 
             // If no condition was typed, write "Good" or "Damaged".
@@ -191,18 +206,18 @@ public class ReservationService
             record.ConditionOnReturn = condition.Trim();
             record.LateReturn = now > reservation.EndTime;  // brought back after the end time?
             record.Remarks = Check.Clean(remarks);
-            db.ReturnRecords.Add(record);
+            reservations.AddReturnRecord(record);
 
             reservation.MarkReturned();
 
             // A damaged item goes to maintenance. Otherwise it goes back on the shelf.
-            Equipment item = EquipmentService.LoadAndLock(db, reservation.EquipmentId);
+            Equipment item = equipment.FindByIdAndLock(reservation.EquipmentId);
             if (damaged)
                 item.Status = EquipmentStatus.UNDER_MAINTENANCE;
             else
                 item.Status = EquipmentStatus.AVAILABLE;
 
-            db.SaveChanges();
+            reservations.Save();
             transaction.Commit();
         }
     }
@@ -216,14 +231,11 @@ public class ReservationService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
+            ReservationRepository reservations = new ReservationRepository(db);
             DateTime now = DateTime.Now;
             int changed = 0;
 
-            List<Reservation> open = db.Reservations
-                .Where(r => r.Status == ReservationStatus.BOOKED || r.Status == ReservationStatus.ISSUED)
-                .ToList();
-
-            foreach (Reservation r in open)
+            foreach (Reservation r in reservations.GetBookedOrIssued())
             {
                 if (r.Status == ReservationStatus.BOOKED && now > r.StartTime.AddMinutes(PickupWindowMinutes))
                 {
@@ -237,7 +249,7 @@ public class ReservationService
                 }
             }
 
-            db.SaveChanges();
+            reservations.Save();
             return changed;
         }
     }
@@ -266,27 +278,10 @@ public class ReservationService
         return false;
     }
 
-    private static int CountActive(LectroLendDbContext db, long userId)
+    // Asks the repository for the booking, and stops with a message if there is none.
+    private static Reservation FindReservation(ReservationRepository reservations, long reservationId)
     {
-        return db.Reservations.Count(r => r.UserId == userId
-            && (r.Status == ReservationStatus.BOOKED
-                || r.Status == ReservationStatus.ISSUED
-                || r.Status == ReservationStatus.OVERDUE));
-    }
-
-    // Bookings together with the linked user, item, room and return record (so we can show their names).
-    private static IQueryable<Reservation> LoadWithDetails(LectroLendDbContext db)
-    {
-        return db.Reservations
-            .Include(r => r.User)
-            .Include(r => r.Equipment)
-            .Include(r => r.Room)
-            .Include(r => r.ReturnRecord);
-    }
-
-    private static Reservation FindReservation(LectroLendDbContext db, long reservationId)
-    {
-        Reservation reservation = db.Reservations.FirstOrDefault(r => r.ReservationId == reservationId);
+        Reservation reservation = reservations.FindById(reservationId);
         if (reservation == null)
             throw new AppException("Booking not found.");
         return reservation;

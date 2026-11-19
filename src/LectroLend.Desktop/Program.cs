@@ -39,14 +39,31 @@ internal static class Program
         // ---- Step 2: create the controllers (MVC) ----
         AppControllers app = new AppControllers(settings);
 
-        // ---- Step 3: sign in, then show the main window ----
-        // After "Sign out" we go back to the sign-in window.
+        // ---- Step 3: welcome page, sign in, then the main window ----
+        // "Get started" on the welcome page opens the sign-in page.
+        // "Back" on the sign-in page shows the welcome page again.
+        // After "Sign out" we go back to the sign-in page.
+        bool showWelcome = true;
         while (true)
         {
+            if (showWelcome)
+            {
+                WelcomeForm welcomeForm = new WelcomeForm();
+                if (welcomeForm.ShowDialog() != DialogResult.OK)
+                    return; // the user closed the welcome page: stop the app
+            }
+
             LoginForm loginForm = new LoginForm(app);
-            if (loginForm.ShowDialog() != DialogResult.OK)
+            DialogResult result = loginForm.ShowDialog();
+            if (result == DialogResult.Retry)
+            {
+                showWelcome = true; // "Back" was clicked
+                continue;
+            }
+            if (result != DialogResult.OK)
                 return; // the user closed the sign-in window: stop the app
 
+            showWelcome = false;
             MainForm mainForm = new MainForm(app);
             Application.Run(mainForm); // waits here until the main window is closed
 

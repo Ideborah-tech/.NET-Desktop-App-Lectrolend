@@ -1,9 +1,11 @@
 using LectroLend.Core.Data;
 using LectroLend.Core.Models;
+using LectroLend.Core.Repositories;
 
 namespace LectroLend.Core.Services;
 
-// Signing in and creating accounts.
+// SERVICE: the rules for signing in and creating accounts.
+// It gets and saves data through the UserRepository.
 public class AuthService
 {
     private DbSettings settings;
@@ -20,11 +22,11 @@ public class AuthService
     {
         if (email == null) email = "";
         if (password == null) password = "";
-        string typedEmail = email.Trim().ToLower();
 
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            User user = db.Users.FirstOrDefault(u => u.Email.ToLower() == typedEmail);
+            UserRepository users = new UserRepository(db);
+            User user = users.FindByEmail(email);
 
             // We give the same message for a wrong email and a wrong password (safer).
             if (user == null || !Passwords.Matches(password, user.PasswordHash))
@@ -44,7 +46,8 @@ public class AuthService
     }
 }
 
-// Managing accounts and profiles.
+// SERVICE: the rules for accounts and profiles.
+// It gets and saves data through the UserRepository.
 public class UserService
 {
     private DbSettings settings;
@@ -65,12 +68,12 @@ public class UserService
         if (request.Role == Role.ADMIN && !allowAdmin)
             throw new AppException("Only an administrator can create administrator accounts.");
 
-        string email = request.Email.Trim().ToLower();
-
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
+            UserRepository users = new UserRepository(db);
+
             // 2. The email must not be used already.
-            if (db.Users.Any(u => u.Email.ToLower() == email))
+            if (users.EmailExists(request.Email))
                 throw new AppException("An account with this email already exists.");
 
             // 3. Make the right kind of user.
@@ -79,7 +82,7 @@ public class UserService
             {
                 Check.Required(request.RegistrationNo, "Registration number", 20);
                 string number = request.RegistrationNo.Trim();
-                if (db.Students.Any(s => s.RegistrationNo == number))
+                if (users.RegistrationNoExists(number))
                     throw new AppException("This registration number is already used.");
 
                 Student student = new Student();
@@ -92,7 +95,7 @@ public class UserService
             {
                 Check.Required(request.StaffNo, "Staff number", 20);
                 string number = request.StaffNo.Trim();
-                if (db.Lecturers.Any(l => l.StaffNo == number))
+                if (users.LecturerStaffNoExists(number))
                     throw new AppException("This staff number is already used.");
 
                 Lecturer lecturer = new Lecturer();
@@ -104,7 +107,7 @@ public class UserService
             {
                 Check.Required(request.StaffNo, "Staff number", 20);
                 string number = request.StaffNo.Trim();
-                if (db.Admins.Any(a => a.StaffNo == number))
+                if (users.AdminStaffNoExists(number))
                     throw new AppException("This staff number is already used.");
 
                 Admin admin = new Admin();
@@ -114,12 +117,12 @@ public class UserService
 
             // 4. Fill in the common details and save.
             user.FullName = request.FullName.Trim();
-            user.Email = email;
+            user.Email = request.Email.Trim().ToLower();
             user.Phone = Check.Clean(request.Phone);
             user.PasswordHash = Passwords.Hash(request.Password);
 
-            db.Users.Add(user);
-            db.SaveChanges();
+            users.Add(user);
+            users.Save();
             return user;
         }
     }
@@ -129,7 +132,8 @@ public class UserService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            return db.Users.OrderBy(u => u.Role).ThenBy(u => u.FullName).ToList();
+            UserRepository users = new UserRepository(db);
+            return users.GetAll();
         }
     }
 
@@ -137,7 +141,8 @@ public class UserService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            return FindUser(db, userId);
+            UserRepository users = new UserRepository(db);
+            return FindUser(users, userId);
         }
     }
 
@@ -149,9 +154,10 @@ public class UserService
 
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            User user = FindUser(db, userId);
+            UserRepository users = new UserRepository(db);
+            User user = FindUser(users, userId);
             user.Active = active;
-            db.SaveChanges();
+            users.Save();
         }
     }
 
@@ -163,7 +169,8 @@ public class UserService
 
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            User user = FindUser(db, userId);
+            UserRepository users = new UserRepository(db);
+            User user = FindUser(users, userId);
             user.FullName = fullName.Trim();
             user.Phone = Check.Clean(phone);
 
@@ -179,7 +186,7 @@ public class UserService
                 lecturer.Department = Check.Clean(department);
             }
 
-            db.SaveChanges();
+            users.Save();
             return user;
         }
     }
@@ -190,7 +197,8 @@ public class UserService
 
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            User user = FindUser(db, userId);
+            UserRepository users = new UserRepository(db);
+            User user = FindUser(users, userId);
 
             if (!Passwords.Matches(currentPassword, user.PasswordHash))
                 throw new AppException("Your current password is incorrect.");
@@ -198,13 +206,14 @@ public class UserService
                 throw new AppException("Please choose a new password that is different from the current one.");
 
             user.PasswordHash = Passwords.Hash(newPassword);
-            db.SaveChanges();
+            users.Save();
         }
     }
 
-    private static User FindUser(LectroLendDbContext db, long userId)
+    // Asks the repository for the user, and stops with a message if there is none.
+    private static User FindUser(UserRepository users, long userId)
     {
-        User user = db.Users.FirstOrDefault(u => u.UserId == userId);
+        User user = users.FindById(userId);
         if (user == null)
             throw new AppException("User not found.");
         return user;

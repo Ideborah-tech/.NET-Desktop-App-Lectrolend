@@ -1,11 +1,12 @@
 using System.Text;
 using LectroLend.Core.Data;
 using LectroLend.Core.Models;
-using Microsoft.EntityFrameworkCore;
+using LectroLend.Core.Repositories;
 
 namespace LectroLend.Core.Services;
 
-// Numbers for the dashboard and the CSV export (a file that opens in Excel).
+// SERVICE: numbers for the dashboard and the CSV export (a file that opens in Excel).
+// It gets data through the repositories.
 public class ReportService
 {
     private DbSettings settings;
@@ -19,9 +20,10 @@ public class ReportService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
+            EquipmentRepository equipment = new EquipmentRepository(db);
             DashboardNumbers numbers = new DashboardNumbers();
-            numbers.TotalEquipment = db.Equipment.Count();
-            numbers.AvailableEquipment = db.Equipment.Count(e => e.Status == EquipmentStatus.AVAILABLE);
+            numbers.TotalEquipment = equipment.CountAll();
+            numbers.AvailableEquipment = equipment.CountAvailable();
             return numbers;
         }
     }
@@ -32,13 +34,8 @@ public class ReportService
         List<Reservation> all;
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            all = db.Reservations
-                .Include(r => r.User)
-                .Include(r => r.Equipment)
-                .Include(r => r.Room)
-                .Include(r => r.ReturnRecord)
-                .OrderByDescending(r => r.StartTime)
-                .ToList();
+            ReservationRepository reservations = new ReservationRepository(db);
+            all = reservations.GetAllWithDetails();
         }
 
         StringBuilder csv = new StringBuilder();

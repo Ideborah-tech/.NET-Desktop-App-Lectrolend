@@ -26,6 +26,7 @@
     <!-- Tells Visual Studio which files are windows (Form) and pages (UserControl),
          so double-clicking them opens Design view. -->
     <Compile Update="Views\Forms\ConnectionForm.cs" SubType="Form" />
+    <Compile Update="Views\Forms\WelcomeForm.cs" SubType="Form" />
     <Compile Update="Views\Forms\LoginForm.cs" SubType="Form" />
     <Compile Update="Views\Forms\RegisterForm.cs" SubType="Form" />
     <Compile Update="Views\Forms\MainForm.cs" SubType="Form" />

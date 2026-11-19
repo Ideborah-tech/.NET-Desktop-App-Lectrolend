@@ -20,21 +20,25 @@ picture (`Assets/welcome.jpg`). To change a picture, replace the file and keep t
 The app follows **Model - View - Controller**:
 
 ```
- VIEW (windows)        --->  CONTROLLER              --->  MODEL
- Views/Forms, Pages          Controllers/                  LectroLend.Core (Models, Services, Data)
- shows data, reacts          decides what to do,           the classes, the rules
- to clicks                   calls the model               and the PostgreSQL database
+ VIEW            --->  CONTROLLER       --->  MODEL (LectroLend.Core)
+ Views/Forms,          Controllers/           Services/  --->  Repositories/  --->  Data/ + PostgreSQL
+ Views/Pages           decides what to        the rules        reads and writes     the database
+ (windows)             do, calls the model                     the database
 ```
 
 | Part | Folder | What it does |
 |---|---|---|
-| **Model** | `src/LectroLend.Core` | `Models/` (User, Student, Lecturer, Admin, Equipment, Room, Reservation, ReturnRecord), `Services/` (the business rules), `Data/` (EF Core + PostgreSQL). Knows nothing about windows. |
+| **Model** | `src/LectroLend.Core` | `Models/` (User, Student, Lecturer, Admin, Equipment, Room, Reservation, ReturnRecord), `Services/` (the business rules), `Repositories/` (the only classes that read and write the database: `UserRepository`, `EquipmentRepository`, `RoomRepository`, `ReservationRepository`), `Data/` (EF Core + PostgreSQL connection). Knows nothing about windows. |
 | **View** | `src/LectroLend.Desktop/Views` | `Forms/` (windows), `Pages/` (screens inside the main window), `UI/` (colours and custom controls). Views only call controllers. |
 | **Controller** | `src/LectroLend.Desktop/Controllers` | `AccountController`, `EquipmentController`, `RoomController`, `ReservationController`, plus `Session` (who is signed in). |
 
 Example: clicking **Reserve** runs `ReserveButton_Click` in the view, which calls
 `app.Reservations.Reserve(item, start, end, room)` in the controller, which calls `ReservationService.Create(...)`
-in the model, which checks the rules and saves the booking in the database.
+in the model. The service checks the rules and uses the repositories (`ReservationRepository`,
+`EquipmentRepository`, `UserRepository`) to read and save the data in the database.
+
+**Screens:** the app opens on a **Welcome page** (AUCA logo, welcome picture and a **Get started** button). Get
+started opens the **Sign-in page**; its **Back** link returns to the Welcome page.
 
 ## Run it
 
@@ -102,14 +106,16 @@ lectrolend/
 │   │   ├── Data/                      LectroLendDbContext (EF Core; tables and columns set with [Table] / [Column]),
 │   │   │                              Schema.sql (creates the tables), DatabaseInitializer (create + seed),
 │   │   │                              DbSettings, BCrypt Passwords
-│   │   └── Services/                  AuthService, UserService, EquipmentService, RoomService,
-│   │                                  ReservationService, ReportService, Check (input checks)
+│   │   ├── Services/                  AuthService, UserService, EquipmentService, RoomService,
+│   │   │                              ReservationService, ReportService, Check (input checks)
+│   │   └── Repositories/              UserRepository, EquipmentRepository, RoomRepository,
+│   │                                  ReservationRepository (all database reading and writing)
 │   └── LectroLend.Desktop/            WinForms app (Views + Controllers)
 │       ├── Program.cs                 connect -> sign in -> main window (loops back after Sign out)
 │       ├── Controllers/               AppControllers, Session, AccountController, EquipmentController,
 │       │                              RoomController, ReservationController
 │       ├── Views/
-│       │   ├── Forms/                 windows (each = .cs + .Designer.cs + .resx): ConnectionForm, LoginForm,
+│       │   ├── Forms/                 windows (each = .cs + .Designer.cs + .resx): WelcomeForm, ConnectionForm, LoginForm,
 │       │   │                          RegisterForm, MainForm, ReserveForm, ReturnForm, EquipmentForm, RoomForm
 │       │   ├── Pages/                 screens in the main window (UserControls): BorrowPage, MyReservationsPage,
 │       │   │                          ProfilePage, DashboardPage, ReservationsPage, EquipmentPage, RoomsPage, PeoplePage
@@ -124,7 +130,7 @@ lectrolend/
 |---|---|
 | ERD | `Data/Schema.sql` + `LectroLendDbContext` (TPT: `users` + `student` / `lecturer` / `admin`) |
 | Class diagram | `Models/`: abstract `User`; `Student` and `Lecturer` implement `IBorrower` (the Borrower generalisation, limits 3 and 5); `Admin` |
-| MVC layers | Views (Forms/Pages) -> Controllers -> Model (Services -> EF Core DbContext -> PostgreSQL) |
+| MVC layers | Views (Forms/Pages) -> Controllers -> Model (Services -> Repositories -> EF Core DbContext -> PostgreSQL) |
 | Sequence diagram (make reservation) | `ReservationService.Create`: validate window, check limit, `SELECT ... FOR UPDATE` on each item, `IsReservable`, overlap check, save as BOOKED, all in one transaction |
 | State diagram | `Reservation.Cancel / MarkIssued / MarkReturned / Expire / MarkOverdue`; `MainForm` runs `RunHousekeeping` every minute (expire after 30 min, flag OVERDUE) |
 | Activity diagram | Borrower reserves; admin **Hand over** (item -> IN_USE); admin **Check in** (damaged -> UNDER_MAINTENANCE, else AVAILABLE; late returns flagged) |

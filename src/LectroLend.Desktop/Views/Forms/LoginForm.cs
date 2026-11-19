@@ -3,7 +3,7 @@ using LectroLend.Desktop.Views.UI;
 
 namespace LectroLend.Desktop.Views;
 
-// VIEW: the sign-in window. A picture on the left and the sign-in form on the right.
+// VIEW: the sign-in window: a white card in the middle with the logo, the sign-in form and the demo accounts.
 // The look of the window is in LoginForm.Designer.cs (open it in Design view).
 // When a button is clicked, this window asks the AccountController to do the work.
 public partial class LoginForm : Form
@@ -17,9 +17,8 @@ public partial class LoginForm : Form
         this.app = app;
         Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); // the app icon
 
-        // Load the pictures from the Assets folder (replace a file to change its picture).
-        picture.Image = Ui.LoadPicture("welcome.jpg");       // the welcome picture on the left
-        logoPicture.Image = Ui.LoadPicture("auca-logo.png"); // the university logo
+        // Load the university logo from the Assets folder (replace the file to change it).
+        logoPicture.Image = Ui.LoadPicture("auca-logo.png");
     }
 
     private void SignInButton_Click(object sender, EventArgs e)
@@ -58,6 +57,12 @@ public partial class LoginForm : Form
         emailBox.Text = email;
         passwordBox.Text = password;
         SignInButton_Click(null, EventArgs.Empty); // the same as clicking "Sign in"
+    }
+
+    // "Back" closes this window and says "Retry", then Program.cs shows the welcome page again.
+    private void BackLink_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+    {
+        DialogResult = DialogResult.Retry;
     }
 
     private void RegisterButton_Click(object sender, EventArgs e)

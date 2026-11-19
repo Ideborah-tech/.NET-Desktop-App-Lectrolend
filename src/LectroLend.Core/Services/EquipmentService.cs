@@ -1,10 +1,11 @@
 using LectroLend.Core.Data;
 using LectroLend.Core.Models;
-using Microsoft.EntityFrameworkCore;
+using LectroLend.Core.Repositories;
 
 namespace LectroLend.Core.Services;
 
-// Everything about equipment: listing, checking if it is free, adding, editing and removing.
+// SERVICE: the rules for equipment: listing, checking if it is free, adding, editing and removing.
+// It gets and saves data through the EquipmentRepository and the ReservationRepository.
 public class EquipmentService
 {
     private DbSettings settings;
@@ -21,7 +22,8 @@ public class EquipmentService
         List<Equipment> all;
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            all = db.Equipment.OrderBy(e => e.Name).ThenBy(e => e.AssetTag).ToList();
+            EquipmentRepository equipment = new EquipmentRepository(db);
+            all = equipment.GetAll();
         }
 
         string text = "";
@@ -46,11 +48,11 @@ public class EquipmentService
 
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            Equipment item = FindItem(db, equipmentId);
-            List<Reservation> bookings = db.Reservations
-                .Where(r => r.EquipmentId == equipmentId)
-                .OrderBy(r => r.StartTime)
-                .ToList();
+            EquipmentRepository equipment = new EquipmentRepository(db);
+            ReservationRepository reservations = new ReservationRepository(db);
+
+            Equipment item = FindItem(equipment, equipmentId);
+            List<Reservation> bookings = reservations.GetForEquipment(equipmentId);
 
             // Upcoming bookings (only the times, no names).
             foreach (Reservation booking in bookings)
@@ -97,7 +99,8 @@ public class EquipmentService
 
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            if (AssetTagExists(db, assetTag, 0))
+            EquipmentRepository equipment = new EquipmentRepository(db);
+            if (equipment.AssetTagExists(assetTag, 0))
                 throw new AppException("This asset tag already exists.");
 
             Equipment item = new Equipment();
@@ -108,8 +111,8 @@ public class EquipmentService
             item.Status = status;
             item.Description = Check.Clean(description);
 
-            db.Equipment.Add(item);
-            db.SaveChanges();
+            equipment.Add(item);
+            equipment.Save();
         }
     }
 
@@ -122,14 +125,25 @@ public class EquipmentService
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         using (var transaction = db.Database.BeginTransaction())
         {
-            Equipment item = LoadAndLock(db, equipmentId);
+            EquipmentRepository equipment = new EquipmentRepository(db);
+            ReservationRepository reservations = new ReservationRepository(db);
 
-            if (AssetTagExists(db, assetTag, equipmentId))
+            Equipment item = equipment.FindByIdAndLock(equipmentId);
+            if (item == null)
+                throw new AppException("Equipment not found.");
+            if (equipment.AssetTagExists(assetTag, equipmentId))
                 throw new AppException("This asset tag already exists.");
 
-            // The status has its own rules (see below).
+            // Rules for changing the status by hand:
+            //  - while someone has the item, it must stay "in use" (check it in first);
+            //  - "in use" is only set by handing the item over.
             if (status != item.Status)
-                CheckStatusChange(db, item, status);
+            {
+                if (reservations.SomeoneHasItem(equipmentId))
+                    throw new AppException("Someone has this item right now. Check it in first.");
+                if (status == EquipmentStatus.IN_USE)
+                    throw new AppException("'In use' is set automatically when an item is handed over.");
+            }
 
             item.Name = name.Trim();
             item.Type = type;
@@ -137,7 +151,7 @@ public class EquipmentService
             item.Status = status;
             item.Description = Check.Clean(description);
 
-            db.SaveChanges();
+            equipment.Save();
             transaction.Commit();
         }
     }
@@ -148,8 +162,11 @@ public class EquipmentService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            Equipment item = FindItem(db, equipmentId);
-            List<Reservation> bookings = db.Reservations.Where(r => r.EquipmentId == equipmentId).ToList();
+            EquipmentRepository equipment = new EquipmentRepository(db);
+            ReservationRepository reservations = new ReservationRepository(db);
+
+            Equipment item = FindItem(equipment, equipmentId);
+            List<Reservation> bookings = reservations.GetForEquipment(equipmentId);
 
             foreach (Reservation booking in bookings)
             {
@@ -160,56 +177,27 @@ public class EquipmentService
             if (bookings.Count > 0)
             {
                 item.Status = EquipmentStatus.RETIRED;
-                db.SaveChanges();
+                equipment.Save();
                 return true;
             }
 
-            db.Equipment.Remove(item);
-            db.SaveChanges();
+            equipment.Delete(item);
+            equipment.Save();
             return false;
         }
     }
 
-    // Rules for changing the status by hand:
-    //  - while someone has the item, it must stay "in use" (check it in first);
-    //  - "in use" is only set by handing the item over.
-    private static void CheckStatusChange(LectroLendDbContext db, Equipment item, EquipmentStatus newStatus)
+    // Asks the repository for the item, and stops with a message if there is none.
+    private static Equipment FindItem(EquipmentRepository equipment, long equipmentId)
     {
-        bool someoneHasIt = db.Reservations.Any(r => r.EquipmentId == item.EquipmentId
-            && (r.Status == ReservationStatus.ISSUED || r.Status == ReservationStatus.OVERDUE));
-
-        if (someoneHasIt)
-            throw new AppException("Someone has this item right now. Check it in first.");
-        if (newStatus == EquipmentStatus.IN_USE)
-            throw new AppException("'In use' is set automatically when an item is handed over.");
-    }
-
-    // True if another item (not the one with ignoreId) already has this asset tag.
-    private static bool AssetTagExists(LectroLendDbContext db, string assetTag, long ignoreId)
-    {
-        string tag = assetTag.Trim().ToLower();
-        return db.Equipment.Any(e => e.AssetTag.ToLower() == tag && e.EquipmentId != ignoreId);
-    }
-
-    public static Equipment FindItem(LectroLendDbContext db, long equipmentId)
-    {
-        Equipment item = db.Equipment.FirstOrDefault(e => e.EquipmentId == equipmentId);
+        Equipment item = equipment.FindById(equipmentId);
         if (item == null)
             throw new AppException("Equipment not found.");
         return item;
     }
-
-    // Loads an item and "locks" its row until the transaction ends.
-    // If two people try to book the same item at the same moment, the second one waits,
-    // and then sees the first booking. This is how we prevent double booking.
-    public static Equipment LoadAndLock(LectroLendDbContext db, long equipmentId)
-    {
-        db.Database.ExecuteSqlRaw("SELECT 1 FROM equipment WHERE equipment_id = {0} FOR UPDATE", equipmentId);
-        return FindItem(db, equipmentId);
-    }
 }
 
-// Adding, editing and deleting rooms.
+// SERVICE: the rules for rooms. It gets and saves data through the RoomRepository.
 public class RoomService
 {
     private DbSettings settings;
@@ -223,7 +211,8 @@ public class RoomService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            return db.Rooms.OrderBy(r => r.RoomCode).ToList();
+            RoomRepository rooms = new RoomRepository(db);
+            return rooms.GetAll();
         }
     }
 
@@ -233,7 +222,8 @@ public class RoomService
 
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            if (CodeExists(db, roomCode, 0))
+            RoomRepository rooms = new RoomRepository(db);
+            if (rooms.CodeExists(roomCode, 0))
                 throw new AppException("This room code already exists.");
 
             Room room = new Room();
@@ -241,8 +231,8 @@ public class RoomService
             room.Building = building.Trim();
             room.Capacity = capacity;
 
-            db.Rooms.Add(room);
-            db.SaveChanges();
+            rooms.Add(room);
+            rooms.Save();
         }
     }
 
@@ -252,14 +242,15 @@ public class RoomService
 
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            Room room = FindRoom(db, roomId);
-            if (CodeExists(db, roomCode, roomId))
+            RoomRepository rooms = new RoomRepository(db);
+            Room room = FindRoom(rooms, roomId);
+            if (rooms.CodeExists(roomCode, roomId))
                 throw new AppException("This room code already exists.");
 
             room.RoomCode = roomCode.Trim();
             room.Building = building.Trim();
             room.Capacity = capacity;
-            db.SaveChanges();
+            rooms.Save();
         }
     }
 
@@ -268,12 +259,15 @@ public class RoomService
     {
         using (LectroLendDbContext db = new LectroLendDbContext(settings))
         {
-            Room room = FindRoom(db, roomId);
-            if (db.Reservations.Any(r => r.RoomId == roomId))
+            RoomRepository rooms = new RoomRepository(db);
+            ReservationRepository reservations = new ReservationRepository(db);
+
+            Room room = FindRoom(rooms, roomId);
+            if (reservations.RoomIsUsed(roomId))
                 throw new AppException("This room is used by bookings and cannot be deleted.");
 
-            db.Rooms.Remove(room);
-            db.SaveChanges();
+            rooms.Delete(room);
+            rooms.Save();
         }
     }
 
@@ -285,15 +279,10 @@ public class RoomService
             throw new AppException("The capacity must be at least 1.");
     }
 
-    private static bool CodeExists(LectroLendDbContext db, string roomCode, long ignoreId)
+    // Asks the repository for the room, and stops with a message if there is none.
+    private static Room FindRoom(RoomRepository rooms, long roomId)
     {
-        string code = roomCode.Trim().ToLower();
-        return db.Rooms.Any(r => r.RoomCode.ToLower() == code && r.RoomId != ignoreId);
-    }
-
-    private static Room FindRoom(LectroLendDbContext db, long roomId)
-    {
-        Room room = db.Rooms.FirstOrDefault(r => r.RoomId == roomId);
+        Room room = rooms.FindById(roomId);
         if (room == null)
             throw new AppException("Room not found.");
         return room;
